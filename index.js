@@ -53,7 +53,7 @@ bot.command('alert', (ctx) => {
 
     ctx.reply(`Set alert interval for ${token} to ${alert}.`);
 
-    // Schedule the alert for the specified alert
+    // Schedule the alert for the specified token
     scheduleAlert(token, alert, ctx);
 });
 
