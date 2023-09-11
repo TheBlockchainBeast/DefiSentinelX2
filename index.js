@@ -23,7 +23,7 @@ bot.command('start', (ctx) => {
     console.log(ctx.from);
     bot.telegram.sendMessage(
         ctx.chat.id,
-        'Hello there! Welcome to the DeFiSentinelX Bot.\n/x <token> - Get token information',
+        'Hello there! Welcome to the DeFiSentinelX Bot.\n/x <token> - Get token information \n/alert <token> <interval>: Set an alert for a specific token (e.g., /alert ETH 1hour).\n/stop <token>: Stop alerts for a specific token.\n/stopall: Stop alerts for all tokens.',
         {}
     );
 });
@@ -33,28 +33,28 @@ bot.command('alert', (ctx) => {
     const args = ctx.message.text.split(' ').slice(1);
 
     if (args.length !== 2) {
-        ctx.reply('Please provide a token and a valid alert. Usage: /alert <token> <alert>');
+        ctx.reply('Please provide a token and a valid interval. Usage: /alert <token> <interval>');
         return;
     }
 
     const token = args[0];
-    const alert = args[1];
+    const interval = args[1];
 
-    // Define supported alerts
-    const supportedAlerts = ['30sec', '1min', '5min', '30min', '1hour'];
+    // Define supported intervals
+    const supportedIntervals = ['30sec', '1min', '5min', '30min', '1hour'];
 
-    if (!supportedAlerts.includes(alert)) {
-        ctx.reply('Invalid alert. Supported alerts: 30sec, 1min, 5min, 30min, 1hour');
+    if (!supportedIntervals.includes(interval)) {
+        ctx.reply('Invalid interval. Supported intervals: 30sec, 1min, 5min, 30min, 1hour');
         return;
     }
 
-    // Store the alert for the token
-    tokenAlerts[token] = alert;
+    // Store the interval for the token
+    tokenAlerts[token] = interval;
 
-    ctx.reply(`Set alert interval for ${token} to ${alert}.`);
+    ctx.reply(`Set alert interval for ${token} to ${interval}.`);
 
     // Schedule the alert for the specified token
-    scheduleAlert(token, alert, ctx);
+    scheduleAlert(token, interval, ctx);
 });
 
 
