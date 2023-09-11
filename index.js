@@ -12,8 +12,8 @@ const schedule = require('node-schedule');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// Initialize an object to store token intervals
-let tokenIntervals = {};
+// Initialize an object to store token alerts
+let tokenAlerts = {};
 
 expressApp.get('/', (req, res) => {
     res.sendFile(path.join(__dirname + '/index.html'));
@@ -28,33 +28,33 @@ bot.command('start', (ctx) => {
     );
 });
 
-// Handle the /interval command to set the alert interval for a specific token
-bot.command('interval', (ctx) => {
+// Handle the /alert command to set the alert alert for a specific token
+bot.command('alert', (ctx) => {
     const args = ctx.message.text.split(' ').slice(1);
 
     if (args.length !== 2) {
-        ctx.reply('Please provide a token and a valid interval. Usage: /interval <token> <interval>');
+        ctx.reply('Please provide a token and a valid alert. Usage: /alert <token> <alert>');
         return;
     }
 
     const token = args[0];
-    const interval = args[1];
+    const alert = args[1];
 
-    // Define supported intervals
-    const supportedIntervals = ['30sec', '1min', '5min', '30min', '1hour'];
+    // Define supported alerts
+    const supportedAlerts = ['30sec', '1min', '5min', '30min', '1hour'];
 
-    if (!supportedIntervals.includes(interval)) {
-        ctx.reply('Invalid interval. Supported intervals: 30sec, 1min, 5min, 30min, 1hour');
+    if (!supportedAlerts.includes(alert)) {
+        ctx.reply('Invalid alert. Supported alerts: 30sec, 1min, 5min, 30min, 1hour');
         return;
     }
 
-    // Store the interval for the token
-    tokenIntervals[token] = interval;
+    // Store the alert for the token
+    tokenAlerts[token] = alert;
 
-    ctx.reply(`Set alert interval for ${token} to ${interval}.`);
+    ctx.reply(`Set alert interval for ${token} to ${alert}.`);
 
-    // Schedule the alert for the specified interval
-    scheduleAlert(token, interval, ctx);
+    // Schedule the alert for the specified alert
+    scheduleAlert(token, alert, ctx);
 });
 
 
@@ -139,8 +139,8 @@ ${priceChange24hEmoji} Price Change (24h): ${pair.priceChange.h24}%
 });
 
 
-function scheduleAlert(token, interval, ctx) {
-    const job = schedule.scheduleJob(`*/${getIntervalSeconds(interval)} * * * * *`, async () => {
+function scheduleAlert(token, alert, ctx) {
+    const job = schedule.scheduleJob(`*/${getAlertSeconds(alert)} * * * * *`, async () => {
         try {
             const tokenInfo = await getTokenInfo(token, ctx);
 
@@ -155,8 +155,8 @@ function scheduleAlert(token, interval, ctx) {
     });
 }
 
-function getIntervalSeconds(interval) {
-    switch (interval) {
+function getAlertSeconds(alert) {
+    switch (alert) {
         case '30sec':
             return 30;
         case '1min':
@@ -258,13 +258,13 @@ bot.command('stop', (ctx) => {
 
     // Remove the specified tokens from the alert list and cancel the job
     tokensToStop.forEach((token) => {
-        if (token in tokenIntervals) {
-            // Get the interval for the token
-            const interval = tokenIntervals[token].interval / 1000; // Convert to seconds
+        if (token in tokenAlerts) {
+            // Get the alert for the token
+            const alert = tokenAlerts[token].alert / 1000; // Convert to seconds
 
             // Cancel the scheduled alert job for the token
-            tokenIntervals[token].cancel();
-            delete tokenIntervals[token];
+            tokenAlerts[token].cancel();
+            delete tokenAlerts[token];
 
             ctx.reply(`Stopped alerts for ${token}`);
         } else {
@@ -275,20 +275,20 @@ bot.command('stop', (ctx) => {
 
 // Add a command to stop alerts for all tokens
 bot.command('stopall', (ctx) => {
-    // Clear all scheduled alert jobs and reset the token intervals object
-    Object.keys(tokenIntervals).forEach((token) => {
-        tokenIntervals[token].cancel();
+    // Clear all scheduled alert jobs and reset the token alerts object
+    Object.keys(tokenAlerts).forEach((token) => {
+        tokenAlerts[token].cancel();
     });
 
-    // Reset the token intervals object
-    tokenIntervals = {};
+    // Reset the token alerts object
+    tokenAlerts = {};
 
     ctx.reply('Stopped all alerts for tokens.');
 });
 
 // Function to schedule an alert and store the job object
-function scheduleAlert(token, interval, ctx) {
-    const job = schedule.scheduleJob(`*/${getIntervalSeconds(interval)} * * * * *`, async () => {
+function scheduleAlert(token, alert, ctx) {
+    const job = schedule.scheduleJob(`*/${getAlertSeconds(alert)} * * * * *`, async () => {
         try {
             const tokenInfo = await getTokenInfo(token, ctx);
 
@@ -302,8 +302,8 @@ function scheduleAlert(token, interval, ctx) {
         }
     });
 
-    // Store the job object in the tokenIntervals object
-    tokenIntervals[token] = job;
+    // Store the job object in the tokenAlerts object
+    tokenAlerts[token] = job;
 }
 
 
