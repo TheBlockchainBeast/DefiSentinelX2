@@ -20,12 +20,46 @@ expressApp.get('/', (req, res) => {
 });
 
 bot.command('start', (ctx) => {
+    const username = ctx.from.username; // Get the username of the user
     console.log(ctx.from);
     bot.telegram.sendMessage(
         ctx.chat.id,
-        'Hello there! Welcome to the DeFiSentinelX Bot.\n/x <token> - Get token information \n/alert <token> <interval>: Set an alert for a specific token (e.g., /alert ETH 1hour).\n/stop <token>: Stop alerts for a specific token.\n/stopall: Stop alerts for all tokens.',
+        `Hello @${username}! Welcome to the DeFiSentinelX Bot.
+
+🚀 To get started, click on the /help command to learn how to use this bot effectively.`,
         {}
     );
+});
+
+bot.command('help', (ctx) => {
+    const helpMessage = `
+Available Bot Commands:
+    
+/x - Get information about a specific token.
+    Usage: /x <token>
+    Example: /x ETH
+    
+/alert - Set an alert for a specific token with a given interval.
+    Usage: /alert <token> <interval>
+    Example: /alert DOGE 5min
+    
+/stop - Stop alerts for a specific token.
+    Usage: /stop <token>
+    Example: /stop DOGE
+    
+/stopall - Stop alerts for all tokens.
+    Example: /stopall
+    
+<b>Usage Instructions:</b>
+- Use /x to get detailed information about a token.
+- Use /alert to set alerts for specific tokens with intervals.
+- Use /stop to stop alerts for a specific token.
+- Use /stopall to stop alerts for all tokens.
+    
+Enjoy using DeFiSentinelX Bot for crypto market insights!
+        `;
+
+    ctx.reply(helpMessage, { disable_web_page_preview: true });
 });
 
 // Handle the /alert command to set the alert alert for a specific token
