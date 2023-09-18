@@ -50,7 +50,7 @@ Available Bot Commands:
 /stopall - Stop alerts for all tokens.
     Example: /stopall
     
-<b>Usage Instructions:</b>
+Usage Instructions:
 - Use /x to get detailed information about a token.
 - Use /alert to set alerts for specific tokens with intervals.
 - Use /stop to stop alerts for a specific token.
