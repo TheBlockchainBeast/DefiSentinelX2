@@ -15,6 +15,8 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 // Initialize an object to store token alerts
 let tokenAlerts = {};
 
+const userPortfolios = {};
+
 expressApp.get('/', (req, res) => {
     res.sendFile(path.join(__dirname + '/index.html'));
 });
@@ -24,7 +26,7 @@ bot.command('start', (ctx) => {
     console.log(ctx.from);
     bot.telegram.sendMessage(
         ctx.chat.id,
-        `Hello @${username}! Welcome to the DeFiSentinelX Bot.
+        `Hello @${username}! Welcome to the AlertBot.
 
 🚀 To get started, click on the /help command to learn how to use this bot effectively.`,
         {}
@@ -34,7 +36,7 @@ bot.command('start', (ctx) => {
 bot.command('help', (ctx) => {
     const helpMessage = `
 Available Bot Commands:
-    
+
 /x - Get information about a specific token.
     Usage: /x <token>
     Example: /x ETH
@@ -49,18 +51,32 @@ Available Bot Commands:
     
 /stopall - Stop alerts for all tokens.
     Example: /stopall
+
+/addtoken - Add tokens to your portfolio.
+    Usage: /addtoken <token> <quantity>
+    Example: /addtoken BTC 0.5
     
+/removetoken - Remove tokens from your portfolio.
+    Usage: /removetoken <token> <quantity>
+    Example: /removetoken ETH 1.0
+
+/portfolio - View your portfolio, including added tokens, quantities, prices, and total value.
+
 Usage Instructions:
 - Use /x to get detailed information about a token.
 - Use /alert to set alerts for specific tokens with intervals.
 - Use /stop to stop alerts for a specific token.
 - Use /stopall to stop alerts for all tokens.
-    
-Enjoy using DeFiSentinelX Bot for crypto market insights!
+- Use /addtoken to add tokens to your portfolio.
+- Use /removetoken to remove tokens from your portfolio.
+- Use /portfolio to view your portfolio and its total value.
+
+Enjoy using AlertBot for crypto market insights!
         `;
 
     ctx.reply(helpMessage, { disable_web_page_preview: true });
 });
+
 
 // Handle the /alert command to set the alert alert for a specific token
 bot.command('alert', (ctx) => {
@@ -339,6 +355,162 @@ function scheduleAlert(token, alert, ctx) {
     // Store the job object in the tokenAlerts object
     tokenAlerts[token] = job;
 }
+
+bot.command('addtoken', (ctx) => {
+    const args = ctx.message.text.split(' ').slice(1);
+
+    if (args.length !== 2) {
+        ctx.reply('Please provide a token symbol and the quantity. Usage: /addtoken <token> <quantity>');
+        return;
+    }
+
+    const token = args[0];
+    const quantity = parseFloat(args[1]);
+
+    if (isNaN(quantity) || quantity <= 0) {
+        ctx.reply('Please provide a valid quantity.');
+        return;
+    }
+
+    // Check if the user already has this token in their portfolio
+    if (!userPortfolios[ctx.from.id]) {
+        userPortfolios[ctx.from.id] = {};
+    }
+
+    if (userPortfolios[ctx.from.id][token]) {
+        // If the token already exists in the portfolio, add to the existing quantity
+        userPortfolios[ctx.from.id][token].quantity += quantity;
+    } else {
+        // If the token doesn't exist in the portfolio, create a new entry
+        userPortfolios[ctx.from.id][token] = {
+            quantity: quantity,
+            // You can add more fields like purchase price here
+        };
+    }
+
+    ctx.reply(`Added ${quantity} ${token} to your portfolio.`);
+});
+
+bot.command('removetoken', (ctx) => {
+    const args = ctx.message.text.split(' ').slice(1);
+
+    if (args.length !== 2) {
+        ctx.reply('Please provide a token symbol and the quantity to remove. Usage: /removetoken <token> <quantity>');
+        return;
+    }
+
+    const token = args[0];
+    const quantityToRemove = parseFloat(args[1]);
+
+    if (isNaN(quantityToRemove) || quantityToRemove <= 0) {
+        ctx.reply('Please provide a valid quantity to remove.');
+        return;
+    }
+
+    // Check if the user has this token in their portfolio
+    if (!userPortfolios[ctx.from.id] || !userPortfolios[ctx.from.id][token]) {
+        ctx.reply(`You don't have ${token} in your portfolio.`);
+        return;
+    }
+
+    const currentQuantity = userPortfolios[ctx.from.id][token].quantity;
+
+    if (quantityToRemove > currentQuantity) {
+        ctx.reply(`You don't have enough ${token} in your portfolio to remove ${quantityToRemove}.`);
+        return;
+    }
+
+    // Subtract the specified quantity from the existing holding
+    userPortfolios[ctx.from.id][token].quantity -= quantityToRemove;
+
+    // If the quantity becomes zero, remove the token entry from the portfolio
+    if (userPortfolios[ctx.from.id][token].quantity === 0) {
+        delete userPortfolios[ctx.from.id][token];
+    }
+
+    ctx.reply(`Removed ${quantityToRemove} ${token} from your portfolio.`);
+});
+
+
+bot.command('portfolio', async (ctx) => {
+    const portfolio = userPortfolios[ctx.from.id];
+
+    if (!portfolio || Object.keys(portfolio).length === 0) {
+        ctx.reply('Your portfolio is empty. Add tokens using /addtoken.');
+        return;
+    }
+
+    try {
+        const portfolioValue = await calculatePortfolioValue(portfolio);
+
+        let portfolioMessage = 'Your Portfolio:\n';
+
+        for (const token in portfolio) {
+            const quantity = portfolio[token].quantity;
+            const tokenPrice = await getTokenPrice(token);
+
+            if (tokenPrice !== null && !isNaN(tokenPrice)) {
+                const tokenValue = tokenPrice * quantity;
+                const formattedPrice = parseFloat(tokenPrice).toFixed(2); // Ensure it's a valid number
+                portfolioMessage += `\nToken: ${token}\nQuantity: ${quantity}\nPrice: $${formattedPrice}\nValue: $${(tokenValue || 0).toFixed(2)}\n`;
+            } else {
+                // Handle the case when the token price is not available or not a valid number
+                portfolioMessage += `\nToken: ${token}\nQuantity: ${quantity}\nPrice: Price not available\nValue: Value not available\n`;
+            }
+        }
+
+        portfolioMessage += `\nTotal Portfolio Value: $${(portfolioValue || 0).toFixed(2)}`;
+
+        // Escape the period character in the message
+        portfolioMessage = portfolioMessage.replace(/\./g, '\\.');
+
+        ctx.replyWithMarkdownV2(portfolioMessage);
+    } catch (error) {
+        console.error(error);
+        ctx.reply('An error occurred while fetching token prices.');
+    }
+});
+
+
+
+
+// Function to calculate the portfolio value
+async function calculatePortfolioValue(portfolio) {
+    let totalValue = 0;
+
+    for (const token in portfolio) {
+        // Fetch the token's current price from Dexscreener
+        const tokenPrice = await getTokenPrice(token);
+
+        if (tokenPrice) {
+            const quantity = portfolio[token].quantity;
+            const tokenValue = tokenPrice * quantity;
+            totalValue += tokenValue;
+        }
+    }
+
+    return totalValue;
+}
+
+// Function to fetch token prices from an API
+async function getTokenPrice(token) {
+    try {
+        // Fetch the token price from the Dexscreener API (replace with the correct URL)
+        const response = await axios.get(`https://api.dexscreener.com/latest/dex/search?q=${token}`);
+
+        if (response.data && response.data.pairs && response.data.pairs.length > 0) {
+            const pair = response.data.pairs[0];
+            return pair.priceUsd;
+        } else {
+            console.error(`Token ${token} not found on Dexscreener.`);
+            return null;
+        }
+    } catch (error) {
+        console.error(`Error fetching price for ${token}: ${error.message}`);
+        return null;
+    }
+}
+
 
 
 bot.launch();
