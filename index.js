@@ -6,7 +6,7 @@ const port = process.env.PORT || 3000;
 expressApp.use(express.static('static'));
 expressApp.use(express.json());
 require('dotenv').config();
-const { Telegraf } = require('telegraf');
+const { Telegraf, Markup } = require('telegraf');
 const schedule = require('node-schedule');
 
 
@@ -22,15 +22,62 @@ expressApp.get('/', (req, res) => {
 });
 
 bot.command('start', (ctx) => {
-    const username = ctx.from.username; // Get the username of the user
-    console.log(ctx.from);
+    const username = ctx.from.username;
     bot.telegram.sendMessage(
         ctx.chat.id,
-        `Hello @${username}! Welcome to the AlertBot.
-
-🚀 To get started, click on the /help command to learn how to use this bot effectively.`,
-        {}
+        `Hello @${username}! Welcome to the AlertBot.🚀 
+To get started, click on the /help command to learn how to use this bot effectively.`,
+        // {
+        //     reply_markup: {
+        //         inline_keyboard: [
+        //             [
+        //                 { text: 'Wallet Analysis', callback_data: 'Wallet Analysis' },
+        //                 { text: 'Portfolio', callback_data: 'portfolio' },
+        //             ],
+        //             [
+        //                 { text: 'Alert', callback_data: 'alert' },
+        //                 { text: 'Gas Tracker', callback_data: 'gastracker' }
+        //             ]
+        //         ]
+        //     }
+        // }
     );
+});
+
+bot.command('gastracker', async (ctx) => {
+    try {
+        // Define your Etherscan API key
+        const apiKey = process.env.YOUR_ETHERSCAN_API_KEY; // Replace with your actual API key
+
+        // Make a GET request to the Etherscan Gas Tracker API
+        const response = await axios.get(
+            `https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=${apiKey}`
+        );
+
+        // Check if the API response is successful
+        if (response.data && response.data.status === '1') {
+            const gasData = response.data.result;
+
+            // Create a message with gas-related information
+            const message = `
+Gas Tracker Information:
+
+Last Block: ${gasData.LastBlock}
+Safe Gas Price: ${gasData.SafeGasPrice} Gwei
+Propose Gas Price: ${gasData.ProposeGasPrice} Gwei
+Fast Gas Price: ${gasData.FastGasPrice} Gwei
+Suggested Base Fee: ${gasData.suggestBaseFee} Gwei
+            `;
+
+            // Send the message to the user
+            ctx.reply(message);
+        } else {
+            ctx.reply('Failed to fetch gas tracker data. Please try again later.');
+        }
+    } catch (error) {
+        console.error('Error fetching gas tracker data:', error);
+        ctx.reply('An error occurred while fetching gas tracker data. Please try again later.');
+    }
 });
 
 bot.command('help', (ctx) => {
@@ -40,27 +87,29 @@ Available Bot Commands:
 /x - Get information about a specific token.
     Usage: /x <token>
     Example: /x ETH
-    
+
 /alert - Set an alert for a specific token with a given interval.
     Usage: /alert <token> <interval>
     Example: /alert DOGE 5min
-    
+
 /stop - Stop alerts for a specific token.
     Usage: /stop <token>
     Example: /stop DOGE
-    
+
 /stopall - Stop alerts for all tokens.
     Example: /stopall
 
 /addtoken - Add tokens to your portfolio.
     Usage: /addtoken <token> <quantity>
     Example: /addtoken BTC 0.5
-    
+
 /removetoken - Remove tokens from your portfolio.
     Usage: /removetoken <token> <quantity>
     Example: /removetoken ETH 1.0
 
 /portfolio - View your portfolio, including added tokens, quantities, prices, and total value.
+
+/gastracker - Get gas tracker information.
 
 Usage Instructions:
 - Use /x to get detailed information about a token.
@@ -70,6 +119,7 @@ Usage Instructions:
 - Use /addtoken to add tokens to your portfolio.
 - Use /removetoken to remove tokens from your portfolio.
 - Use /portfolio to view your portfolio and its total value.
+- Use /gastracker to get gas tracker information.
 
 Enjoy using AlertBot for crypto market insights!
         `;
@@ -470,9 +520,6 @@ bot.command('portfolio', async (ctx) => {
         ctx.reply('An error occurred while fetching token prices.');
     }
 });
-
-
-
 
 // Function to calculate the portfolio value
 async function calculatePortfolioValue(portfolio) {
