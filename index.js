@@ -6,7 +6,7 @@ const port = process.env.PORT || 3000;
 expressApp.use(express.static('static'));
 expressApp.use(express.json());
 require('dotenv').config();
-const { Telegraf, Markup } = require('telegraf');
+const { Telegraf } = require('telegraf');
 const schedule = require('node-schedule');
 
 
@@ -27,20 +27,6 @@ bot.command('start', (ctx) => {
         ctx.chat.id,
         `Hello @${username}! Welcome to the AlertBot.🚀 
 To get started, click on the /help command to learn how to use this bot effectively.`,
-        // {
-        //     reply_markup: {
-        //         inline_keyboard: [
-        //             [
-        //                 { text: 'Wallet Analysis', callback_data: 'Wallet Analysis' },
-        //                 { text: 'Portfolio', callback_data: 'portfolio' },
-        //             ],
-        //             [
-        //                 { text: 'Alert', callback_data: 'alert' },
-        //                 { text: 'Gas Tracker', callback_data: 'gastracker' }
-        //             ]
-        //         ]
-        //     }
-        // }
     );
 });
 
